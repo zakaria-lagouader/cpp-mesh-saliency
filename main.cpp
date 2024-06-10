@@ -6,15 +6,13 @@
 #include <unordered_set>
 #include <fstream>
 #include <iostream>
+#include <thread>
+#include <mutex>
 #include <filesystem>
 
 // Function to compute exactly n neighboring triangles
-std::unordered_set<int> computeNeighbors(const Eigen::MatrixXi &F, int triangleIndex, int n)
+std::unordered_set<int> computeNeighbors(const Eigen::MatrixXi &F, const Eigen::MatrixXi &TT, int triangleIndex, int n)
 {
-  // Compute triangle-triangle adjacency
-  Eigen::MatrixXi TT, TTi;
-  igl::triangle_triangle_adjacency(F, TT, TTi);
-
   // Set to store visited triangles
   std::unordered_set<int> visited;
   // Queue for BFS
@@ -52,7 +50,27 @@ std::unordered_set<int> computeNeighbors(const Eigen::MatrixXi &F, int triangleI
   return visited;
 }
 
-void saveNeighborsToCSV(const Eigen::MatrixXi &F, const std::string &meshPath, const std::string &outputFolderPath, int n)
+// Mutex to protect file writing
+std::mutex fileMutex;
+
+void processTriangles(const Eigen::MatrixXi &F, const Eigen::MatrixXi &TT, int startIdx, int endIdx, int n, std::ofstream &file)
+{
+  for (int i = startIdx; i < endIdx; ++i)
+  {
+    std::unordered_set<int> neighbors = computeNeighbors(F, TT, i, n);
+
+    // Lock the mutex before writing to the file
+    std::lock_guard<std::mutex> guard(fileMutex);
+    file << i;
+    for (int neighbor : neighbors)
+    {
+      file << "," << neighbor;
+    }
+    file << "\n";
+  }
+}
+
+void saveNeighborsToCSV(const Eigen::MatrixXi &F, const std::string &meshPath, const std::string &outputFolderPath, int n, int numThreads)
 {
   // Extract the base name of the mesh file
   std::filesystem::path meshFilePath(meshPath);
@@ -66,16 +84,31 @@ void saveNeighborsToCSV(const Eigen::MatrixXi &F, const std::string &meshPath, c
     return;
   }
 
-  for (int i = 0; i < F.rows(); ++i)
+  // Compute triangle-triangle adjacency once
+  Eigen::MatrixXi TT, TTi;
+  igl::triangle_triangle_adjacency(F, TT, TTi);
+
+  // Determine the range of triangles each thread will process
+  int numTriangles = F.rows();
+  int chunkSize = (numTriangles + numThreads - 1) / numThreads; // Ceil division
+
+  std::vector<std::thread> threads;
+  for (int i = 0; i < numThreads; ++i)
   {
-    std::unordered_set<int> neighbors = computeNeighbors(F, i, n);
-    // Write the triangle index and its neighbors to the CSV file
-    file << i;
-    for (int neighbor : neighbors)
+    int startIdx = i * chunkSize;
+    int endIdx = (((startIdx + chunkSize) < (numTriangles)) ? (startIdx + chunkSize) : (numTriangles));
+    if (startIdx >= numTriangles)
+      break;
+    threads.emplace_back(processTriangles, std::ref(F), std::ref(TT), startIdx, endIdx, n, std::ref(file));
+  }
+
+  // Join all threads
+  for (std::thread &t : threads)
+  {
+    if (t.joinable())
     {
-      file << "," << neighbor;
+      t.join();
     }
-    file << "\n";
   }
 
   file.close();
@@ -83,9 +116,9 @@ void saveNeighborsToCSV(const Eigen::MatrixXi &F, const std::string &meshPath, c
 
 int main(int argc, char *argv[])
 {
-  if (argc < 4)
+  if (argc < 5)
   {
-    std::cerr << "Usage: " << argv[0] << " <mesh_path> <output_folder_path> <n_neighbors>" << std::endl;
+    std::cerr << "Usage: " << argv[0] << " <mesh_path> <output_folder_path> <n_neighbors> <num_threads>" << std::endl;
     return -1;
   }
 
@@ -96,6 +129,7 @@ int main(int argc, char *argv[])
   std::string meshPath = argv[1];
   std::string outputFolderPath = argv[2];
   int n = std::stoi(argv[3]);
+  int numThreads = std::stoi(argv[4]);
 
   if (!igl::read_triangle_mesh(meshPath, V, F))
   {
@@ -104,7 +138,7 @@ int main(int argc, char *argv[])
   }
 
   // Save neighbors to CSV
-  saveNeighborsToCSV(F, meshPath, outputFolderPath, n);
+  saveNeighborsToCSV(F, meshPath, outputFolderPath, n, numThreads);
 
   return 0;
 }

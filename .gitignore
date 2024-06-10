@@ -32,3 +32,4 @@
 *.swp
 
 build
+cached_face_neighbors
