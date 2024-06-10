@@ -7,10 +7,8 @@
 #include <unordered_set>
 
 // Function to compute exactly n neighboring triangles
-std::unordered_set<int> computeNeighbors(
-    const Eigen::MatrixXi &F, int triangleIndex, int n)
+std::unordered_set<int> computeNeighbors(const Eigen::MatrixXi &F, int triangleIndex, int n)
 {
-
   // Compute triangle-triangle adjacency
   Eigen::MatrixXi TT, TTi;
   igl::triangle_triangle_adjacency(F, TT, TTi);
@@ -54,6 +52,13 @@ std::unordered_set<int> computeNeighbors(
 
 int main(int argc, char *argv[])
 {
+
+  if (argc != 3)
+  {
+    std::cerr << "Usage: " << argv[0] << " <mesh_file> <n>" << std::endl;
+    return 1;
+  }
+
   Eigen::MatrixXd V;
   Eigen::MatrixXi F;
 
@@ -65,7 +70,7 @@ int main(int argc, char *argv[])
   int n = std::stoi(argv[2]); // The number of neighboring triangles
   std::unordered_set<int> neighbors = computeNeighbors(F, triangleIndex, n);
 
-  // add the starting triangle to the neighbors set
+  // Add the starting triangle to the neighbors set
   neighbors.insert(triangleIndex);
 
   // Create a color matrix for faces

@@ -1,16 +1,16 @@
 #include <igl/read_triangle_mesh.h>
 #include <igl/triangle_triangle_adjacency.h>
-#include <igl/opengl/glfw/Viewer.h>
 #include <Eigen/Core>
 #include <vector>
 #include <queue>
 #include <unordered_set>
+#include <fstream>
+#include <iostream>
+#include <filesystem>
 
 // Function to compute exactly n neighboring triangles
-std::unordered_set<int> computeNeighbors(
-    const Eigen::MatrixXi &F, int triangleIndex, int n)
+std::unordered_set<int> computeNeighbors(const Eigen::MatrixXi &F, int triangleIndex, int n)
 {
-
   // Compute triangle-triangle adjacency
   Eigen::MatrixXi TT, TTi;
   igl::triangle_triangle_adjacency(F, TT, TTi);
@@ -52,44 +52,59 @@ std::unordered_set<int> computeNeighbors(
   return visited;
 }
 
+void saveNeighborsToCSV(const Eigen::MatrixXi &F, const std::string &meshPath, const std::string &outputFolderPath, int n)
+{
+  // Extract the base name of the mesh file
+  std::filesystem::path meshFilePath(meshPath);
+  std::string baseName = meshFilePath.stem().string();
+  std::string outputFilePath = outputFolderPath + "/" + baseName + "_neighbors.csv";
+
+  std::ofstream file(outputFilePath);
+  if (!file.is_open())
+  {
+    std::cerr << "Unable to open file: " << outputFilePath << std::endl;
+    return;
+  }
+
+  for (int i = 0; i < F.rows(); ++i)
+  {
+    std::unordered_set<int> neighbors = computeNeighbors(F, i, n);
+    // Write the triangle index and its neighbors to the CSV file
+    file << i;
+    for (int neighbor : neighbors)
+    {
+      file << "," << neighbor;
+    }
+    file << "\n";
+  }
+
+  file.close();
+}
+
 int main(int argc, char *argv[])
 {
+  if (argc < 4)
+  {
+    std::cerr << "Usage: " << argv[0] << " <mesh_path> <output_folder_path> <n_neighbors>" << std::endl;
+    return -1;
+  }
+
   Eigen::MatrixXd V;
   Eigen::MatrixXi F;
 
   // Read mesh from file (provide path to your mesh file)
-  igl::read_triangle_mesh(argv[1], V, F);
+  std::string meshPath = argv[1];
+  std::string outputFolderPath = argv[2];
+  int n = std::stoi(argv[3]);
 
-  // Example usage
-  int triangleIndex = 0;      // The starting triangle index
-  int n = std::stoi(argv[2]); // The number of neighboring triangles
-  std::unordered_set<int> neighbors = computeNeighbors(F, triangleIndex, n);
-
-  // add the starting triangle to the neighbors set
-  neighbors.insert(triangleIndex);
-
-  // Create a color matrix for faces
-  Eigen::MatrixXd faceColors = Eigen::MatrixXd::Constant(F.rows(), 3, 1.0); // Default to white
-
-  // Set the color of the neighboring faces to red
-  for (int tri : neighbors)
+  if (!igl::read_triangle_mesh(meshPath, V, F))
   {
-    faceColors(tri, 0) = 1.0; // Red
-    faceColors(tri, 1) = 0.0; // Green
-    faceColors(tri, 2) = 0.0; // Blue
+    std::cerr << "Failed to read mesh from file: " << meshPath << std::endl;
+    return -1;
   }
 
-  // Create a viewer
-  igl::opengl::glfw::Viewer viewer;
-
-  // Set the mesh
-  viewer.data().set_mesh(V, F);
-
-  // Set the face colors
-  viewer.data().set_colors(faceColors);
-
-  // Launch the viewer
-  viewer.launch();
+  // Save neighbors to CSV
+  saveNeighborsToCSV(F, meshPath, outputFolderPath, n);
 
   return 0;
 }
