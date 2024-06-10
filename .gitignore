@@ -31,4 +31,4 @@
 *.swo
 *.swp
 
-build/*
+build
