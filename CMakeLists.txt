@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(example)
+project(mesh-preprocessing)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -18,11 +18,9 @@ igl_include(glfw)
 
 # Add your project files
 file(GLOB SRC_FILES *.cpp)
-add_executable(${PROJECT_NAME} ${SRC_FILES})
 
-# Link libigl and Boost to your project
-target_link_libraries(${PROJECT_NAME} PUBLIC 
-    igl::core
-    igl::glfw
-    xtensor
-)
+foreach(file ${SRC_FILES})
+    get_filename_component(name ${file} NAME_WE)
+    add_executable(${name} ${file})
+    target_link_libraries(${name} PUBLIC igl::core igl::glfw xtensor)
+endforeach()

@@ -1,0 +1,5 @@
+1. decimate to 10k faces
+2. cache face neighbors
+3. cache face normals and area
+4. cache patches
+5. make a bash script to run the simulation
