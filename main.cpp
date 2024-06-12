@@ -1,64 +1,27 @@
 #include <iostream>
 #include <fstream>
-#include <sstream>
-#include <vector>
-#include <NumCpp.hpp>
+#include <xtensor/xarray.hpp>
+#include <xtensor/xio.hpp>
+#include <xtensor/xnpy.hpp>
 
-// Function to read data from a text file into an NdArray
-nc::NdArray<int> readTxtToNdArray(const std::string &filePath)
+int main(int argc, char **argv)
 {
-  std::ifstream file(filePath);
-  std::string line;
-  std::vector<std::vector<int>> data;
-
-  while (std::getline(file, line))
-  {
-    std::stringstream ss(line);
-    std::vector<int> row;
-    int value;
-    while (ss >> value)
+    if (argc < 2)
     {
-      row.push_back(value);
+        std::cerr << "Usage: " << argv[0] << " <path_to_npy_file>" << std::endl;
+        return 1;
     }
-    data.push_back(row);
-  }
 
-  // Convert the 2D vector to a NumCpp NdArray
-  size_t numRows = data.size();
-  size_t numCols = data[0].size();
-  nc::NdArray<int> array(numRows, numCols);
-
-  for (size_t i = 0; i < numRows; ++i)
-  {
-    for (size_t j = 0; j < numCols; ++j)
+    try
     {
-      array(i, j) = data[i][j];
+        xt::xarray<int64_t> data = xt::load_npy<int64_t>(argv[1]);
+        std::cout << data << std::endl;
     }
-  }
+    catch (const std::exception &e)
+    {
+        std::cerr << "Error loading .npy file: " << e.what() << std::endl;
+        return 1;
+    }
 
-  return array;
-}
-
-int main(int argc, char *argv[])
-{
-  if (argc != 3)
-  {
-    std::cerr << "Usage: " << argv[0] << " <input_file> <output_file>" << std::endl;
-    return 1;
-  }
-
-  std::string inputFilePath = argv[1];
-  std::string outputFilePath = argv[2];
-
-  // Read the data from the input text file into an NdArray
-  nc::NdArray<int> data = readTxtToNdArray(inputFilePath);
-
-  // Print the data to verify it's been read correctly
-  std::cout << "Data from file:" << std::endl;
-  std::cout << data << std::endl;
-
-  // Save the NdArray data to the output binary file using nc::dump
-  data.dump(outputFilePath);
-
-  return 0;
+    return 0;
 }
