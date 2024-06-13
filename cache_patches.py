@@ -44,7 +44,7 @@ def process_model(patches_path, normals_path, output_path):
     print("Caching patches...")
     print("loading patches from:", patches_path)
     patches = np.loadtxt(patches_path, delimiter=',', dtype=int)
-    patches = patches[patches[:, 0].argsort()][:, 1:]
+    patches = patches[:, 1:]
 
     print("loading normals from:", normals_path)
     patchFacesNormals = np.loadtxt(normals_path, delimiter=',')
