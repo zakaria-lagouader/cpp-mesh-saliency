@@ -10,7 +10,7 @@ list(PREPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 # Libigl
 include(libigl)
 
-# xtensor and xtl
+# xtensor, xtl, xtensor-io, and xtensor-blas
 include(xtensor)
 
 # Enable the target igl::glfw
@@ -22,5 +22,11 @@ file(GLOB SRC_FILES *.cpp)
 foreach(file ${SRC_FILES})
     get_filename_component(name ${file} NAME_WE)
     add_executable(${name} ${file})
-    target_link_libraries(${name} PUBLIC igl::core igl::glfw xtensor)
+    target_link_libraries(${name} PUBLIC 
+        igl::core
+        igl::glfw
+        xtensor
+        xtensor-io
+        xtensor-blas
+    )
 endforeach()
