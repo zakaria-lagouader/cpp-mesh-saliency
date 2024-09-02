@@ -21,7 +21,7 @@ std::vector<int> computeNeighbors(const Eigen::MatrixXi &TT, int triangleIndex, 
     toVisit.push(triangleIndex);
     visited[triangleIndex] = true;
 
-    while (!toVisit.empty() && neighbors.size() < n)
+    while (neighbors.size() < n && !toVisit.empty())
     {
         int currentTriangle = toVisit.front();
         toVisit.pop();
@@ -36,6 +36,19 @@ std::vector<int> computeNeighbors(const Eigen::MatrixXi &TT, int triangleIndex, 
                 toVisit.push(neighbor);
                 if (neighbors.size() == n)
                     break;
+            }
+        }
+    }
+
+    // If we do not have enough neighbors, we will need to revisit some already visited neighbors
+    if (neighbors.size() < n)
+    {
+        for (int i = 0; i < TT.rows() && neighbors.size() < n; ++i)
+        {
+            if (!visited[i])
+            {
+                neighbors.push_back(i);
+                visited[i] = true;
             }
         }
     }
